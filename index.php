@@ -124,10 +124,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($entity === 'registration') {
             if ($action === 'create') {
                 validateRequired(['partID', 'regDate', 'regPMode'], $_POST);
+                
+                // Get participant and event data to calculate fee
+                $participant = $participantModel->getById((int)$_POST['partID']);
+                $event = $eventsModel->getById((int)$participant['evCode']);
+                
+                // Calculate: evRFee - partDRate
+                $regFPaid = $event['evRFree'] - $participant['partDRate'];
+                
                 $registrationModel->create([
                     'partID' => (int)$_POST['partID'],
                     'regDate' => trim($_POST['regDate']),
-                    'regFPaid' => (float)($_POST['regFPaid'] ?? 0),
+                    'regFPaid' => $regFPaid,
                     'regPMode' => trim($_POST['regPMode'])
                 ]);
                 $_SESSION['flash_message'] = 'Registration created successfully!';
@@ -138,10 +146,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if ($action === 'update') {
                 validateRequired(['regCode', 'partID', 'regDate', 'regPMode'], $_POST);
+                
+                // Get participant and event data to calculate fee
+                $participant = $participantModel->getById((int)$_POST['partID']);
+                $event = $eventsModel->getById((int)$participant['evCode']);
+                
+                // Calculate: evRFee - partDRate
+                $regFPaid = $event['evRFree'] - $participant['partDRate'];
+                
                 $registrationModel->update((int)$_POST['regCode'], [
                     'partID' => (int)$_POST['partID'],
                     'regDate' => trim($_POST['regDate']),
-                    'regFPaid' => (float)($_POST['regFPaid'] ?? 0),
+                    'regFPaid' => $regFPaid,
                     'regPMode' => trim($_POST['regPMode'])
                 ]);
                 $_SESSION['flash_message'] = 'Registration updated successfully!';
@@ -240,6 +256,7 @@ if (isset($_GET['edit_reg'])) {
         body { 
             font-family: Arial, sans-serif;
             background: #fff;
+            color: #000;
             padding: 20px;
             line-height: 1.5;
         }
@@ -248,21 +265,23 @@ if (isset($_GET['edit_reg'])) {
             margin: 0 auto; 
         }
         h1 { 
+            color: #000;
             margin-bottom: 20px;
             font-size: 24px;
-            border-bottom: 2px solid;
+            border-bottom: 2px solid #000;
             padding-bottom: 10px;
         }
         h2 { 
+            color: #000;
             margin: 30px 0 15px;
             font-size: 18px;
-            border-bottom: 1px solid;
+            border-bottom: 1px solid #000;
             padding-bottom: 5px;
         }
         .alert {
             padding: 10px;
             margin-bottom: 20px;
-            border: 1px solid;
+            border: 1px solid #000;
         }
         .alert-error {
             background: #f0f0f0;
@@ -277,7 +296,7 @@ if (isset($_GET['edit_reg'])) {
             margin-bottom: 30px;
         }
         .card {
-            border: 1px solid;
+            border: 1px solid #000;
             padding: 15px;
         }
         .form-group {
@@ -291,14 +310,14 @@ if (isset($_GET['edit_reg'])) {
         input, select {
             width: 100%;
             padding: 8px;
-            border: 1px solid;
+            border: 1px solid #000;
             background: #fff;
             font-size: 14px;
         }
         input:focus, select:focus {
-            outline: 2px solid;
+            outline: 2px solid #000;
         }
-       button {
+        button {
             background: #fff;
             color: #000;
             padding: 10px 20px;
@@ -310,13 +329,17 @@ if (isset($_GET['edit_reg'])) {
         button:hover {
             background: #fff;
         }
+        button:active {
+            background: #fff;
+        }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 30px;
-            border: 1px solid;
+            border: 1px solid #000;
         }
         th {
+            background: #000;
             color: #fff;
             padding: 10px;
             text-align: left;
@@ -324,7 +347,7 @@ if (isset($_GET['edit_reg'])) {
         }
         td {
             padding: 10px;
-            border: 1px solid;
+            border: 1px solid #000;
         }
         .actions {
             display: flex;
@@ -332,6 +355,7 @@ if (isset($_GET['edit_reg'])) {
             align-items: center;
         }
         .actions a {
+            color: #000;
             text-decoration: underline;
         }
         .actions a:hover {
@@ -341,18 +365,20 @@ if (isset($_GET['edit_reg'])) {
             display: inline;
         }
         .delete-btn {
-            color: #000;
             background: #fff;
-            border: 1px solid;
+            color: #000;
+            border: 1px solid #000;
             padding: 5px 10px;
             font-size: 12px;
         }
         .delete-btn:hover {
-            color: #fff;
+            background: #fff;
+            color: #000;
         }
         .cancel-link {
             display: inline-block;
             margin-left: 10px;
+            color: #000;
             text-decoration: underline;
         }
         .cancel-link:hover {
@@ -362,6 +388,11 @@ if (isset($_GET['edit_reg'])) {
             text-align: center;
             padding: 20px;
             font-style: italic;
+        }
+        .note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -440,7 +471,7 @@ if (isset($_GET['edit_reg'])) {
                         <input type="text" name="partLName" required value="<?= e($editPart['partLName'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label>Daily Rate</label>
+                        <label>Discount Rate</label>
                         <input type="number" step="0.01" name="partDRate" value="<?= e($editPart['partDRate'] ?? '0') ?>">
                     </div>
                     <button type="submit"><?= $editPart ? 'Update' : 'Create' ?> Participant</button>
@@ -477,19 +508,14 @@ if (isset($_GET['edit_reg'])) {
                         <input type="date" name="regDate" required value="<?= e($editReg['regDate'] ?? '') ?>">
                     </div>
                     <div class="form-group">
-                        <label>Fee Paid</label>
-                        <input type="number" step="0.01" name="regFPaid" value="<?= e($editReg['regFPaid'] ?? '0') ?>">
-                    </div>
-                    <div class="form-group">
                         <label>Payment Mode *</label>
                         <select name="regPMode" required>
                             <option value="">-- Select Payment Mode --</option>
                             <option value="Cash" <?= ($editReg && $editReg['regPMode'] == 'Cash') ? 'selected' : '' ?>>Cash</option>
                             <option value="Card" <?= ($editReg && $editReg['regPMode'] == 'Card') ? 'selected' : '' ?>>Card</option>
-                            <option value="Online" <?= ($editReg && $editReg['regPMode'] == 'Online') ? 'selected' : '' ?>>Online Transfer</option>
-                            <option value="Cheque" <?= ($editReg && $editReg['regPMode'] == 'Cheque') ? 'selected' : '' ?>>Cheque</option>
                         </select>
                     </div>
+                    <p class="note">Note: Fee Paid will be automatically calculated as (Event Fee - Discount Rate)</p>
                     <button type="submit"><?= $editReg ? 'Update' : 'Create' ?> Registration</button>
                     <?php if ($editReg): ?>
                         <a href="index.php" class="cancel-link">Cancel</a>
@@ -498,6 +524,7 @@ if (isset($_GET['edit_reg'])) {
             </div>
         </div>
 
+        <!-- TABLES -->
         <h2>Events List</h2>
         <table>
             <thead>
@@ -544,7 +571,7 @@ if (isset($_GET['edit_reg'])) {
                     <th>Event</th>
                     <th>First Name</th>
                     <th>Last Name</th>
-                    <th>Daily Rate</th>
+                    <th>Discount Rate</th>
                     <th>Actions</th>
                 </tr>
             </thead>

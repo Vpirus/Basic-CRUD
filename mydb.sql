@@ -24,11 +24,11 @@ CREATE TABLE registrations (
     FOREIGN KEY (partID) REFERENCES participants(partID) ON DELETE CASCADE
 );*/
 
--- Step 1: Create the database
+
 CREATE DATABASE IF NOT EXISTS registration_db;
 USE registration_db;
 
--- Step 2: Create events table
+
 CREATE TABLE IF NOT EXISTS events (
     evCode INT AUTO_INCREMENT PRIMARY KEY,
     evName VARCHAR(255) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Step 3: Create participants table
+
 CREATE TABLE IF NOT EXISTS participants (
     partID INT AUTO_INCREMENT PRIMARY KEY,
     evCode INT NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS participants (
     FOREIGN KEY (evCode) REFERENCES events(evCode) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Step 4: Create registrations table
+
 CREATE TABLE IF NOT EXISTS registrations (
     regCode INT AUTO_INCREMENT PRIMARY KEY,
     partID INT NOT NULL,
